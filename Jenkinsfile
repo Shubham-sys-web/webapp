@@ -12,14 +12,15 @@ pipeline {
         stage('Secret Scan - TruffleHog') {
             steps {
                 script {
-                    sh 'trufflehog --json --regex --entropy=False https://github.com/Shubham-sys-web/webapp.git > trufflehog-report.json || true'
-                    def findings = readFile('trufflehog-report.json').trim()
-                    if (findings.length() > 0) {
-                        echo "🚨 SECRETS DETECTED by TruffleHog:"
-                        sh 'cat trufflehog-report.json'
-                        error "Build aborted due to detected secrets."
+                    sh 'trufflehog github --repo=https://github.com/Shubham-sys-web/webapp.git --json --no-update > trufflehog-report.json || true'
+                    sh 'cat trufflehog-report.json'
+
+                    def report = readFile('trufflehog-report.json')
+                    if (report.contains('"DetectorName"')) {
+                        echo "🚨 SECRETS DETECTED by TruffleHog! Build aborted."
+                        error "Pipeline stopped: hardcoded secrets found in repository."
                     } else {
-                        echo "✅ No secrets detected."
+                        echo "✅ No secrets detected. Proceeding to build."
                     }
                 }
             }
@@ -32,7 +33,7 @@ pipeline {
         stage('Deploy To Tomcat') {
             steps {
                 sshagent(['tomcat']) {
-                    sh 'scp -o StrictHostKeyChecking=no target/*.war ubuntu@13.233.2.128:/opt/tomcat/webapps/'
+                    sh 'scp -o StrictHostKeyChecking=no target/*.war ubuntu@13.233.1.94:/opt/tomcat/webapps/'
                 }
             }
         }
