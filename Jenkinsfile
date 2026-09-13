@@ -9,6 +9,21 @@ pipeline {
                 '''
             }
         }
+        stage('Secret Scan - TruffleHog') {
+            steps {
+                script {
+                    sh 'trufflehog --json --regex --entropy=False https://github.com/Shubham-sys-web/webapp.git > trufflehog-report.json || true'
+                    def findings = readFile('trufflehog-report.json').trim()
+                    if (findings.length() > 0) {
+                        echo "🚨 SECRETS DETECTED by TruffleHog:"
+                        sh 'cat trufflehog-report.json'
+                        error "Build aborted due to detected secrets."
+                    } else {
+                        echo "✅ No secrets detected."
+                    }
+                }
+            }
+        }
         stage('Build') {
             steps {
                 sh 'mvn clean package'
