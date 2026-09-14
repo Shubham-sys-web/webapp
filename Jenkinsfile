@@ -54,10 +54,29 @@ pipeline {
                     ).trim()
 
                     echo "🔎 Semgrep: ${findingsCount} findings detected"
+
+                    // ---- Detailed verbose report banaya jaa raha hai ----
+                    sh '''
+                        which jq || sudo apt-get install -y jq
+                        echo ""
+                        echo "========================================================"
+                        echo "           🚨 DETAILED SAST VULNERABILITY REPORT 🚨"
+                        echo "========================================================"
+                        jq -r '.results[] |
+                          "\\n--------------------------------------------------------\\n" +
+                          "🔴 Vulnerability : " + (.check_id | split(".") | last) +
+                          "\\n📄 File          : " + .path +
+                          "\\n📍 Line          : " + (.start.line|tostring) +
+                          "\\n⚠️  Severity      : " + (.extra.severity // "N/A") +
+                          "\\n📝 Message       : " + (.extra.message // "N/A" | gsub("\\n"; " "))
+                        ' semgrep-report.json
+                        echo "========================================================"
+                    '''
+
                     archiveArtifacts artifacts: 'semgrep-report.json', allowEmptyArchive: true
 
                     if (findingsCount.toInteger() > 0) {
-                        error "Pipeline stopped: ${findingsCount} SAST vulnerabilities found. Fix code before deploying."
+                        error "Pipeline stopped: ${findingsCount} SAST vulnerabilities found. Fix code before deploying (see log above for details)."
                     } else {
                         echo "✅ No SAST findings. Proceeding to build."
                     }
