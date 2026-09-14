@@ -1,0 +1,1 @@
+This is a sample public file used for the Path Traversal demo (VULN-10). Try filename=../WEB-INF/web.xml instead.

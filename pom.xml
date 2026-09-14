@@ -7,6 +7,13 @@
   <version>1.0-SNAPSHOT</version>
   <name>WebApp Maven Webapp</name>
   <url>http://maven.apache.org</url>
+
+  <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -14,8 +21,77 @@
       <version>3.8.1</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- Servlet API - provided by Tomcat at runtime -->
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>3.1.0</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--
+      VULN-LAB DEPENDENCY (intentional): H2 embedded database.
+      Version 1.4.197 is used deliberately - it is OLD and carries known CVEs
+      (e.g. CVE-2018-14335 local file read via H2 console, and the H2 JNDI/RCE
+      family patched in later 2.x releases). Used here as the backing DB for
+      the SQLi lab pages, AND as an SCA (Software Composition Analysis) target
+      so Snyk / OWASP Dependency-Check / Trivy can detect it.
+      DO NOT use this version in a real project.
+    -->
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <version>1.4.197</version>
+    </dependency>
+
+    <!--
+      VULN-LAB DEPENDENCY (intentional): Apache Log4j 2.14.1
+      This is the exact version affected by Log4Shell (CVE-2021-44228 / CVE-2021-45046),
+      one of the most critical RCE vulnerabilities in Java history. It is actually
+      used in LoginServlet to log user-controlled input, which is the real Log4Shell
+      attack vector. This is the primary SCA (Snyk/Dependency-Check) demo target.
+      DO NOT use this version in a real project - upgrade to log4j-core >= 2.17.1.
+    -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>2.14.1</version>
+    </dependency>
+
+    <!--
+      VULN-LAB DEPENDENCY: MongoDB driver, used only to demonstrate the
+      NoSQL Injection anti-pattern in NoSqlLoginServlet. No live MongoDB
+      server is required for the app to deploy; the endpoint will simply
+      fail at runtime unless MONGO_URI is configured.
+    -->
+    <dependency>
+      <groupId>org.mongodb</groupId>
+      <artifactId>mongodb-driver-sync</artifactId>
+      <version>4.3.0</version>
+    </dependency>
   </dependencies>
+
   <build>
     <finalName>WebApp</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-war-plugin</artifactId>
+        <version>3.3.2</version>
+        <configuration>
+          <failOnMissingWebXml>false</failOnMissingWebXml>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
 </project>
