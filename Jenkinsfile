@@ -8,10 +8,9 @@ pipeline {
             steps {
                 sh '''
                     echo "PATH = ${PATH}"
-                    echo "M2_HOME = ${M2_HOME}"
                     export PATH=$PATH:${SEMGREP_PATH}
-                    which semgrep || echo "⚠️ semgrep not found in PATH"
-                    semgrep --version || true
+                    which semgrep
+                    semgrep --version
                 '''
             }
         }
@@ -42,20 +41,22 @@ pipeline {
                             --config p/owasp-top-ten \
                             --config p/secrets \
                             --config p/security-audit \
-                            --json --output semgrep-report.json . || true
+                            --json --output semgrep-report.json .
                     '''
+
+                    if (!fileExists('semgrep-report.json')) {
+                        error "Pipeline stopped: Semgrep did not run — report file missing."
+                    }
 
                     def findingsCount = sh(
                         script: "grep -o '\"check_id\"' semgrep-report.json | wc -l",
                         returnStdout: true
                     ).trim()
 
-                    echo "🔎 Semgrep: ${findingsCount} findings detected (SQLi/Path Traversal/XSS/etc.)"
-
+                    echo "🔎 Semgrep: ${findingsCount} findings detected"
                     archiveArtifacts artifacts: 'semgrep-report.json', allowEmptyArchive: true
 
                     if (findingsCount.toInteger() > 0) {
-                        echo "🚨 SAST vulnerabilities found in source code! Build blocked."
                         error "Pipeline stopped: ${findingsCount} SAST vulnerabilities found. Fix code before deploying."
                     } else {
                         echo "✅ No SAST findings. Proceeding to build."
