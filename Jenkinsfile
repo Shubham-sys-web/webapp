@@ -2,6 +2,7 @@ pipeline {
     agent any
     environment {
         SEMGREP_PATH = "/home/ubuntu/.local/bin"
+        SNYK_PATH    = "/usr/local/bin"
     }
     stages {
         stage('Initialize') {
@@ -27,6 +28,45 @@ pipeline {
                         error "Pipeline stopped: hardcoded secrets found in repository."
                     } else {
                         echo "✅ No secrets detected. Proceeding to build."
+                    }
+                }
+            }
+        }
+
+        stage('SCA Scan - Snyk') {
+            steps {
+                withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                    script {
+                        sh '''
+                            export PATH=$PATH:${SNYK_PATH}
+                            which snyk
+                            snyk --version
+                        '''
+
+                        // Full JSON report (non-blocking so we always get the report file)
+                        sh '''
+                            export PATH=$PATH:${SNYK_PATH}
+                            snyk test --json > snyk-report.json || true
+                        '''
+                        sh 'cat snyk-report.json'
+
+                        archiveArtifacts artifacts: 'snyk-report.json', allowEmptyArchive: true
+
+                        // Gate the pipeline on high/critical severity
+                        def snykExitCode = sh(
+                            script: '''
+                                export PATH=$PATH:${SNYK_PATH}
+                                snyk test --severity-threshold=high
+                            ''',
+                            returnStatus: true
+                        )
+
+                        if (snykExitCode != 0) {
+                            echo "🚨 SCA VULNERABILITIES DETECTED by Snyk! Build aborted."
+                            error "Pipeline stopped: high/critical severity vulnerabilities found in dependencies (see snyk-report.json)."
+                        } else {
+                            echo "✅ No high/critical SCA vulnerabilities found. Proceeding to build."
+                        }
                     }
                 }
             }
@@ -93,7 +133,7 @@ pipeline {
         stage('Deploy To Tomcat') {
             steps {
                 sshagent(['tomcat']) {
-                    sh 'scp -o StrictHostKeyChecking=no target/*.war ubuntu@65.2.73.79:/opt/tomcat/webapps/'
+                    sh 'scp -o StrictHostKeyChecking=no target/*.war ubuntu@13.203.231.60:/opt/tomcat/webapps/'
                 }
             }
         }
