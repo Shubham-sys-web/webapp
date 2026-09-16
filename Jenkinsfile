@@ -5,7 +5,7 @@ pipeline {
         SNYK_PATH    = "/usr/local/bin"
         ZAP_PATH     = "/opt/zaproxy"
         DEPLOY_HOST  = "13.204.66.212"
-        APP_URL      = "http://localhost:8081/WebApp/"
+        APP_URL      = "http://13.204.66.212:8080/WebApp/"
     }
     stages {
         stage('Initialize') {
