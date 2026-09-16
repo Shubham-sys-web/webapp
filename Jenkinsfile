@@ -146,8 +146,14 @@ pipeline {
                 script {
                     sh 'sleep 25'
 
+                    // Kill any stray ZAP process left over from a previous failed run,
+                    // so it doesn't hold onto the proxy port.
+                    sh 'pkill -f zap.sh || true'
+                    sh 'sleep 3'
+
                     sh """
                         ${ZAP_PATH}/zap.sh -cmd \
+                          -port 8090 \
                           -quickurl ${APP_URL} \
                           -quickprogress \
                           -quickout \$WORKSPACE/zap-report.html || true
